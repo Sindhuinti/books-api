@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 	"errors"
 )
 
@@ -13,10 +14,28 @@ type book struct {
 	Quantity int	`json:"quantity"`
 }
 
+type user struct{
+	Email   string 	`json:"email"`
+	Password  string  `json:"password"`
+}
+
 var books = []book{
 	{ID:"1",Title:"Ruby",Author:"Stone",Quantity: 12},
 	{ID:"2",Title:"Python",Author:"Snake",Quantity: 5},
 	{ID:"3",Title:"Java",Author:"Cup",Quantity: 7},
+}
+
+var users = []user{
+	{Email:"hi@mail.com",Password: "123"},
+	
+}
+func HashPassword(password string) (string, error) {
+    bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+    return string(bytes), err
+}
+func CheckPasswordHash(password, hash string) bool {
+    err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+    return err == nil
 }
 
 func bookById(c *gin.Context){
@@ -94,6 +113,21 @@ func returnBook(c *gin.Context){
 
 }
 
+func userSignup(c *gin.Context){
+
+	var newUser user
+	if err:= c.BindJSON(&newUser); err != nil{
+		c.IndentedJSON(http.StatusBadRequest,gin.H{"message":"Cant create user"})
+		return 
+	}
+
+	newUser.Password ,_ = HashPassword(newUser.Password)
+	
+	users = append(users,newUser)
+	c.IndentedJSON(http.StatusCreated,newUser)
+
+}
+
 func main(){
 	router:=gin.Default();
 	router.GET("/books",getBooks)
@@ -101,6 +135,7 @@ func main(){
 	router.GET("/books/:id",bookById)
 	router.PATCH("/books/checkout",checkOutBook)
 	router.PATCH("/books/return",returnBook)
+	router.POST("/signup",userSignup)
 	router.Run("localhost:8080")
 
 }
